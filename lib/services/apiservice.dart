@@ -1,15 +1,17 @@
+import 'package:codex/models/NearbyStoresResp.dart';
+import 'package:codex/models/Otpreqresp.dart';
+import 'package:codex/models/Regresp.dart';
+import 'package:codex/models/TrendingProductsResp.dart';
+import 'package:codex/services/user_service.dart';
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 
 class Apiservice {
   late Dio _dio;
   final logger = Logger();
+  final UserService _userService;
 
-  // Set after Verify OTP, used by all authenticated calls.
-  String? customerToken;
-  String? customerRefreshToken;
-
-  Apiservice() {
+  Apiservice(this._userService) {
     _dio = Dio(
       BaseOptions(
         baseUrl: "https://outmesmart.codeedextechnologies.com",
@@ -22,8 +24,9 @@ class Apiservice {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        if (customerToken != null) {
-          options.headers["Authorization"] = "Bearer $customerToken";
+        final token = _userService.accessToken;
+        if (token != null) {
+          options.headers["Authorization"] = "Bearer $token";
         }
         logger.i("url:${options.path}");
         logger.i("method:${options.method}");
@@ -47,18 +50,18 @@ class Apiservice {
 
   // ================= AUTH =================
 
-  Future<Response?> requestOtp(String phone) async {
+  Future<Otpreqresp?> requestOtp(String phone) async {
     var data = {"phone": phone};
     final response =
     await _dio.post("/api/v1/customer/auth/otp/request", data: data);
     if (response.statusCode == 200) {
-      return response;
+      return Otpreqresp.fromJson(response.data);
     }
     return null;
   }
 
   // POST /api/v1/customer/auth/otp/verify
-  Future<Response?> verifyOtp(
+  Future<Regresp?> verifyOtp(
       String phone, String code, String name, String email) async {
     var data = {
       "phone": phone,
@@ -69,21 +72,30 @@ class Apiservice {
     final response =
     await _dio.post("/api/v1/customer/auth/otp/verify", data: data);
     if (response.statusCode == 200) {
-      customerToken = response.data["data"]["accessToken"];
-      customerRefreshToken = response.data["data"]["refreshToken"];
-      return response;
+      final regResp = Regresp.fromJson(response.data);
+      if (regResp.success == true && regResp.data != null) {
+        await _userService.saveSession(
+          regResp.data!.accessToken!,
+          regResp.data!.refreshToken!,
+          regResp.data!.customer!,
+        );
+      }
+      return regResp;
     }
     return null;
   }
 
   // POST /api/v1/customer/auth/refresh
   Future<Response?> refresh() async {
-    var data = {"refreshToken": customerRefreshToken};
+    var data = {"refreshToken": _userService.refreshToken};
     final response =
     await _dio.post("/api/v1/customer/auth/refresh", data: data);
     if (response.statusCode == 200) {
-      customerToken = response.data["data"]["accessToken"];
-      customerRefreshToken = response.data["data"]["refreshToken"];
+      final respData = response.data["data"];
+      await _userService.updateTokens(
+        respData["accessToken"],
+        respData["refreshToken"],
+      );
       return response;
     }
     return null;
@@ -91,12 +103,11 @@ class Apiservice {
 
   // POST /api/v1/customer/auth/logout
   Future<Response?> logout() async {
-    var data = {"refreshToken": customerRefreshToken};
+    var data = {"refreshToken": _userService.refreshToken};
     final response =
     await _dio.post("/api/v1/customer/auth/logout", data: data);
     if (response.statusCode == 200) {
-      customerToken = null;
-      customerRefreshToken = null;
+      await _userService.clearSession();
       return response;
     }
     return null;
@@ -183,7 +194,7 @@ class Apiservice {
   }
 
   // GET /api/v1/customer/stores/nearby
-  Future<Response?> nearbyStores(
+  Future<NearbyStoresResp?> nearbyStores(
       double lat,
       double lng, {
         int page = 1,
@@ -205,13 +216,13 @@ class Apiservice {
       },
     );
     if (response.statusCode == 200) {
-      return response;
+      return NearbyStoresResp.fromJson(response.data);
     }
     return null;
   }
 
   // GET /api/v1/customer/offers/trending
-  Future<Response?> trendingProducts(
+  Future<TrendingProductsResp?> trendingProducts(
       {int page = 1, int limit = 20, String? storeId}) async {
     final response = await _dio.get(
       "/api/v1/customer/offers/trending",
@@ -222,7 +233,7 @@ class Apiservice {
       },
     );
     if (response.statusCode == 200) {
-      return response;
+      return TrendingProductsResp.fromJson(response.data);
     }
     return null;
   }

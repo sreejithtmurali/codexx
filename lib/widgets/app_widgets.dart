@@ -135,12 +135,14 @@ class ProductCard extends StatelessWidget {
                     child: Image.network(
                       product.image,
                       height: 102,
-                      width: double.infinity,
+                      width: 126,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         height: 82,
                         color: const Color(0xffeeeeee),
-                        child: const Icon(Icons.image_outlined),
+                        child: Container(
+                          width: 126,height: 102,
+                            child: const Icon(Icons.image_outlined)),
                       ),
                     ),
                   ),
@@ -242,7 +244,10 @@ class StoreCard extends StatelessWidget {
                     errorBuilder: (_, __, ___) => Container(
                       height: 110,
                       color: const Color(0xffeeeeee),
-                      child: const Icon(Icons.storefront_outlined),
+                      child: Container(
+                          width: double.infinity,
+                          height: 110,
+                          child: const Icon(Icons.storefront_outlined)),
                     ),
                   ),
                 ),

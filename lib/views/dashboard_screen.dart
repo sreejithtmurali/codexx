@@ -1,11 +1,26 @@
+import 'package:codex/providers/dashboard_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/store_models.dart';
 import '../widgets/app_widgets.dart';
 import 'product_detail_screen.dart';
 import 'shop_detail_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardProvider>().init();
+    });
+  }
 
   static const categories = [
     CategoryItem('Bakery', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80'),
@@ -17,124 +32,136 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            sliver: SliverList.list(
-              children: [
-                SizedBox(height: 24,),
-                RichText(
-                  text: const TextSpan(
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: kDark),
-                    children: [
-                      TextSpan(text: 'All your Local Stores in one '),
-                      TextSpan(text: 'app', style: TextStyle(color: kGreen)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'From groceries to gadgets, shop everything you need.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                const SizedBox(height: 14),
-                const AppSearchBar(hint: 'Search by products or Shops'),
-                const SizedBox(height: 12),
-                _WeatherBanner(),
-                const SizedBox(height: 16),
-                _HeroBanner(),
-                const SizedBox(height: 16),
-                const SectionHeader(title: 'Trending Nearby'),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 178,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: demoProducts.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) => ProductCard(
-                      product: demoProducts[index],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ProductDetailScreen(product: demoProducts[index]),
-                        ),
+      child: Consumer<DashboardProvider>(
+        builder: (context, provider, child) {
+          return CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                sliver: SliverList.list(
+                  children: [
+                    const SizedBox(height: 24),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: kDark),
+                        children: [
+                          TextSpan(text: 'All your Local Stores in one '),
+                          TextSpan(text: 'app', style: TextStyle(color: kGreen)),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const SectionHeader(title: 'Shop By Store Type', action: 'View all'),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 134,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (_, i) {
-                      final category = categories[i];
-                      return Container(
-                        width: 134,
-                        height: 134,
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.asset('assets/images/img_1.png', height: 51, width: 74, fit: BoxFit.cover),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'From groceries to gadgets, shop everything you need.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 14),
+                    const AppSearchBar(hint: 'Search by products or Shops'),
+                    const SizedBox(height: 12),
+                    _WeatherBanner(),
+                    const SizedBox(height: 16),
+                    const _HeroBanner(),
+                    const SizedBox(height: 16),
+                    const SectionHeader(title: 'Trending Nearby'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 178,
+                      child: provider.isLoadingProducts
+                          ? const Center(child: CircularProgressIndicator())
+                          : provider.trendingProducts.isEmpty
+                              ? const Center(child: Text("No trending products"))
+                              : ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: provider.trendingProducts.length,
+                                  separatorBuilder: (context, index) => const SizedBox(width: 10),
+                                  itemBuilder: (context, index) => ProductCard(
+                                    product: provider.trendingProducts[index],
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProductDetailScreen(product: provider.trendingProducts[index]),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                    ),
+                    const SizedBox(height: 14),
+                    const SectionHeader(title: 'Shop By Store Type', action: 'View all'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 134,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: categories.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (_, i) {
+                          final category = categories[i];
+                          return Container(
+                            width: 134,
+                            height: 134,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              category.title,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                            child: Column(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.asset('assets/images/img_1.png', height: 51, width: 74, fit: BoxFit.cover),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  category.title,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  "BakeryCakes, Pastries, Breads, Biscuits ..",
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.w500),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              "BakeryCakes, Pastries, Breads, Biscuits ..",
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 10,color: Colors.black45, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const SectionHeader(title: 'Nearby Stores', action: 'View all'),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 210,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: demoStores.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) => StoreCard(
-                      store: demoStores[index],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ShopDetailScreen(store: demoStores[index]),
-                        ),
+                          );
+                        },
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 14),
+                    const SectionHeader(title: 'Nearby Stores', action: 'View all'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 210,
+                      child: provider.isLoadingStores
+                          ? const Center(child: CircularProgressIndicator())
+                          : provider.nearbyStores.isEmpty
+                              ? const Center(child: Text("No nearby stores"))
+                              : ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: provider.nearbyStores.length,
+                                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                                  itemBuilder: (context, index) => StoreCard(
+                                    store: provider.nearbyStores[index],
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ShopDetailScreen(store: provider.nearbyStores[index]),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
