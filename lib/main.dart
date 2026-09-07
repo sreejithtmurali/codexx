@@ -1,21 +1,37 @@
 import 'package:codex/providers/auth_provider.dart';
+import 'package:codex/providers/dashboard_provider.dart';
 import 'package:codex/services/apiservice.dart';
-import 'package:codex/views/loginview.dart';
-import 'package:codex/views/onboarding.dart';
-import 'package:codex/views/otpverify.dart';
-import 'package:codex/views/root_screen.dart';
+import 'package:codex/services/user_service.dart';
+import 'package:codex/views/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final userService = UserService(prefs);
+
   runApp(
     MultiProvider(
       providers: [
-        Provider(create: (_) => Apiservice()),
-        ChangeNotifierProxyProvider<Apiservice, AuthProvider>(
-          create: (context) => AuthProvider(context.read<Apiservice>()),
-          update: (context, apiService, authProvider) =>
-              authProvider ?? AuthProvider(apiService),
+        Provider.value(value: userService),
+        ProxyProvider<UserService, Apiservice>(
+          update: (context, userService, previous) =>
+              previous ?? Apiservice(userService),
+        ),
+        ChangeNotifierProxyProvider<Apiservice, DashboardProvider>(
+          create: (context) => DashboardProvider(context.read<Apiservice>()),
+          update: (context, apiService, dashboardProvider) =>
+              dashboardProvider ?? DashboardProvider(apiService),
+        ),
+        ChangeNotifierProxyProvider2<Apiservice, UserService, AuthProvider>(
+          create: (context) => AuthProvider(
+            context.read<Apiservice>(),
+            context.read<UserService>(),
+          ),
+          update: (context, apiService, userService, authProvider) =>
+              authProvider ?? AuthProvider(apiService, userService),
         ),
       ],
       child: const MyApp(),
@@ -33,9 +49,9 @@ class MyApp extends StatelessWidget {
       title: 'codex',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: OnboardingScreen(),
+      home: const SplashScreen(),
     );
   }
 }

@@ -50,9 +50,9 @@ class _OtpVerifyState extends State<OtpVerify> {
     }
 
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.verifyOtp(widget.phone, otp);
+    final response = await authProvider.verifyOtp(widget.phone, otp);
 
-    if (success) {
+    if (response != null && response.success == true) {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -64,6 +64,26 @@ class _OtpVerifyState extends State<OtpVerify> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(authProvider.errorMessage ?? "Invalid OTP")),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleResendOtp() async {
+    final authProvider = context.read<AuthProvider>();
+    final response = await authProvider.requestOtp(widget.phone);
+
+    if (response != null && response.success == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.message ?? "OTP resent successfully")),
+        );
+        startTimer();
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authProvider.errorMessage ?? "Failed to resend OTP")),
         );
       }
     }
@@ -211,25 +231,38 @@ class _OtpVerifyState extends State<OtpVerify> {
                     children: List.generate(6, (index) => buildOtpBox(index)),
                   ),
                   const SizedBox(height: 16),
-                  RichText(
-                    text: TextSpan(
-                      text: "Resend code in ",
-                      style: GoogleFonts.montserrat(
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: formattedTime,
-                          style: GoogleFonts.montserrat(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                  _secondsLeft > 0
+                      ? RichText(
+                          text: TextSpan(
+                            text: "Resend code in ",
+                            style: GoogleFonts.montserrat(
+                              fontSize: 13,
+                              color: Colors.black87,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: formattedTime,
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: authProvider.isLoading ? null : _handleResendOtp,
+                          child: Text(
+                            "Resend OTP",
+                            style: GoogleFonts.montserrat(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
                   const Spacer(),
                   ElevatedButton.icon(
                     iconAlignment: IconAlignment.end,

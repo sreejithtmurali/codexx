@@ -24,10 +24,13 @@ class _LoginState extends State<Login> {
     }
 
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.requestOtp(phone);
+    final response = await authProvider.requestOtp(phone);
 
-    if (success) {
+    if (response != null && response.success == true) {
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.message ?? "OTP sent successfully")),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
